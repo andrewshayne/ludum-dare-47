@@ -11,9 +11,9 @@ export default class TileMapScene extends Phaser.Scene
 
 	preload()
     {
-        this.load.image('tiles', 'assets/assetTiles.png')
-        this.load.tilemapTiledJSON('map', 'assets/assetTiles.json')
-        this.load.spritesheet('fox_animation', 'assets/foxrun.png', { frameWidth: 110, frameHeight: 128 })
+        this.load.image('tiles', 'assetTiles.png')
+        this.load.tilemapTiledJSON('map', 'assetTiles.json')
+        this.load.spritesheet('fox_animation', 'foxrun.png', { frameWidth: 110, frameHeight: 128 })
     }
 
     create()
