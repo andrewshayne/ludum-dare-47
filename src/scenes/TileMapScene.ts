@@ -1,3 +1,4 @@
+import { Vector } from 'matter'
 import Phaser, { GameObjects } from 'phaser'
 
 
@@ -12,12 +13,20 @@ let isJumping: boolean
 let isKnockback: boolean
 let knockbackTimer: Phaser.Time.TimerEvent
 
+//loop actions
+let loopIndex: integer
+let loopActions: integer[]
+let loopImages: Phaser.GameObjects.Sprite[]
+
+//ui elements
+let actionRing: Phaser.GameObjects.Sprite
+let jumpIcon: Phaser.GameObjects.Sprite
+let fireIcon: Phaser.GameObjects.Sprite
+
 //layers
 let layer1: Phaser.Tilemaps.StaticTilemapLayer
 let layer2: Phaser.Tilemaps.StaticTilemapLayer
 let layer3: Phaser.Tilemaps.StaticTilemapLayer
-
-//player timers
 
 
 //player projectiles
@@ -42,9 +51,14 @@ export default class TileMapScene extends Phaser.Scene
     {
         this.load.image('bg', 'bg.png')
         this.load.image('tiles', 'assetTiles.png')
-        this.load.tilemapTiledJSON('map', 'assetTiles.json')
+        this.load.tilemapTiledJSON('map', 'level1.json')
         this.load.spritesheet('fox_animation', 'magerun192.png', { frameWidth: 192, frameHeight: 206 })
         this.load.spritesheet('fireball_animation', 'fireball.png', { frameWidth: 55, frameHeight: 55 })
+
+        //UI elements
+        this.load.image('ring', 'ring.png')
+        this.load.image('jump_icon', 'jumparrow.png')
+        this.load.spritesheet('fire_icon_animation', 'firecharge.png', { frameWidth: 51, frameHeight: 90 })
 
         //audio
         this.load.audio('fire_sfx', 'sfx/fireballs/Fireball1.wav')
@@ -57,21 +71,35 @@ export default class TileMapScene extends Phaser.Scene
         this.add.image(0, 0, 'bg')
 
         const map = this.make.tilemap({key:'map'})
-        const tileset = map.addTilesetImage('tileset', 'tiles') //grab the tiled tileset file "tileset" from "tiles" image file
+        const tileset = map.addTilesetImage('assetTiles', 'tiles') //grab the tiled tileset file "tileset" from "tiles" image file
 
         layer1 = map.createStaticLayer('Tile Layer 1', tileset, 0, 0)
         layer2 = map.createStaticLayer('Tile Layer 2', tileset, 0, 0)
-        layer3 = map.createStaticLayer('Tile Layer 3', tileset, 0, 0)
 
 
         //map.setCollisionByProperty({ collides: true })
 
         ///player
         player = this.physics.add.sprite(100, 450, 'fox_animation')
+        player.body.setSize(80, 160)
+        player.body.setOffset(58, 32)
         //player.setBounce(0.2)
         //player.setFrictionX(0.9)
         //player.setMaxVelocity(500, 500)
-        player.setCollideWorldBounds(true) //collide with world bounds
+
+
+        //create UI elements
+        let ringCenter: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1130, 150)
+        actionRing = this.add.sprite(ringCenter.x, ringCenter.y, 'ring')
+        jumpIcon = this.add.sprite(ringCenter.x - 100, ringCenter.y, 'jump_icon')
+        fireIcon = this.add.sprite(ringCenter.x + 100, ringCenter.y, 'fire_icon_animation')
+
+        //set loop actions
+        loopIndex = 0
+        loopActions = [action.JUMP, action.FIRE, action.JUMP]
+        loopImages = []
+
+        this.initLoopUI() 
 
         //set player bools
         isJumping = false
@@ -81,31 +109,18 @@ export default class TileMapScene extends Phaser.Scene
         projectiles = this.physics.add.group({key: 'projectiles', immovable: true, allowGravity: false})
         projectiles.createMultiple({ classType: Phaser.Physics.Arcade.Sprite, quantity: 5, active: false, visible: false, key: 'fireball_animation' })
 
+        //COLLISIONS
 
-        //colliders???
+        //player x layer1
+        layer1.setCollisionBetween(0,99)
         this.physics.add.collider(player, layer1)
-        this.physics.add.collider(player, layer2)
-        this.physics.add.collider(player, layer3)
 
-        //player animations
-        this.anims.create({
-            key: 'playerMove',
-            frames: this.anims.generateFrameNumbers('fox_animation', { frames: [0,0,1,1,2,2,2,3,3,4,4,5,5,5] }),
-            frameRate: 22,
-            repeat: -1
-        })
-        this.anims.create({
-            key: 'playerStill',
-            frames: this.anims.generateFrameNumbers('fox_animation', { start: 1, end: 1})
-        })
+        //fireball x layer1
+        this.physics.add.collider(projectiles, layer1)
+        
+        this.initAnimations()
 
-        //projectile animations
-        this.anims.create({
-            key: 'fire',
-            frames: this.anims.generateFrameNumbers('fireball_animation', { start: 0, end: 6 }),
-            frameRate: 10,
-            repeat: -1
-        })
+        
 
         ///
 
@@ -121,11 +136,10 @@ export default class TileMapScene extends Phaser.Scene
 
     update(time, delta)
     {
-
         const cursors = this.input.keyboard.createCursorKeys()
         const runVelocity = 100
         const maxVel = 300
-        const knockbackVelocity = 2000
+        const knockbackVelocity = 1500
         const jumpVelocity = 500
 
         player.setVelocityX(player.body.velocity.x * 0.9)
@@ -149,10 +163,26 @@ export default class TileMapScene extends Phaser.Scene
             player.anims.play('playerMove', true)
         }
         //jump - ADD TIMER!!!
+        //also fire now!
         if(Phaser.Input.Keyboard.JustDown(key_space)) {
-            isJumping = true
-            player.setVelocityY(-jumpVelocity)
-            jump_sound.play()
+            let modIndex = loopIndex % loopActions.length
+            if(loopActions[modIndex] == action.JUMP) {
+                isJumping = true
+                player.setVelocityY(-jumpVelocity)
+                jump_sound.play()
+            }
+            if(loopActions[modIndex] == action.FIRE) {
+                //spawn projectile in direction we are facing, apply set knockback to character
+                this.fireProjectile(player.x, player.y)
+                if(player.flipX)
+                    player.setVelocityX(knockbackVelocity)
+                else
+                    player.setVelocityX(-knockbackVelocity)
+                fire_sound.play()
+                knockbackTimer = this.time.delayedCall(400, this.unlockPlayerMovement) //disallow player input for x milliseconds
+                isKnockback = true
+            }
+            loopIndex++
         }
         //strong attack
         if(Phaser.Input.Keyboard.JustDown(key_e)) {
@@ -169,6 +199,42 @@ export default class TileMapScene extends Phaser.Scene
 
     }
 
+    initAnimations() {
+        //player animations
+        this.anims.create({
+            key: 'playerMove',
+            frames: this.anims.generateFrameNumbers('fox_animation', { frames: [0,0,1,1,2,2,2,3,3,4,4,5,5,5] }),
+            frameRate: 22,
+            repeat: -1
+        })
+        this.anims.create({
+            key: 'playerStill',
+            frames: this.anims.generateFrameNumbers('fox_animation', { start: 1, end: 1})
+        })
+
+        //projectile animation
+        this.anims.create({
+            key: 'shoot',
+            frames: this.anims.generateFrameNumbers('fireball_animation', { start: 0, end: 5 }),
+            frameRate: 10,
+            repeat: -1
+        })
+
+        //fire icon animation
+        this.anims.create({
+            key: 'firecharge',
+            frames: this.anims.generateFrameNumbers('fire_icon_animation', { start: 0, end: 7 }),
+            frameRate: 10,
+            repeat: -1
+        })
+
+        //find all the fire sprites in loopImages and start them up
+        loopActions.forEach((elem, index) => {
+            if(elem == action.FIRE)
+                loopImages[index].play('firecharge', true)
+        })
+    }
+
     fireProjectile(x: integer, y: integer) {
         //could run out... but should always have one available!
         const fireVelocity = 600
@@ -180,11 +246,29 @@ export default class TileMapScene extends Phaser.Scene
             p.setVelocityX(-fireVelocity)
         else
             p.setVelocityX(fireVelocity)
-        p.anims.play('fire', true)
+        p.anims.play('shoot', true)
     }
 
     unlockPlayerMovement() {
         isKnockback = false
+    }
+
+    initLoopUI() {
+        //dynamically create icons for loop actions
+        loopActions.forEach((elem, index) => {
+            let x = index*300
+            let y = 100
+            if(elem == action.JUMP) {
+                loopImages.push(this.add.sprite(x, y, 'jump_icon'))
+            }
+            if(elem == action.FIRE) {
+                loopImages.push(this.add.sprite(x, y, 'fire_icon_animation'))
+            }
+            this.add.text(x, y-100, (index+1).toString(), { fontFamily: 'Georgia', fontSize: '42px'})
+            
+                //position
+                //loopImages[loopImages.length-1].setPosition(index * 300 + 200, 100)
+        })
     }
 }
 
