@@ -57,8 +57,9 @@ export default class TileMapScene extends Phaser.Scene
         //follow path!!
         this.load.plugin('rexpathfollowerplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexpathfollowerplugin.min.js', true);
 
-        this.load.image('bg', 'bg.png')
-        this.load.image('magetiles', 'magetiles.png')
+        this.load.image('bg', 'cave_bg.png')
+        //this.load.image('magetiles', 'magetiles.png')
+        this.load.image('magetiles-extruded', 'magetiles-extruded.png')
         this.load.tilemapTiledJSON('map', 'magetiles.json')
         this.load.spritesheet('mage_animation', 'mageanimations.png', { frameWidth: 173, frameHeight: 186 })
         this.load.spritesheet('fireball_animation', 'fireball.png', { frameWidth: 200, frameHeight: 106 })
@@ -77,12 +78,18 @@ export default class TileMapScene extends Phaser.Scene
     {
         //set bg
         bg = this.add.image(890, 610, 'bg')
+        //bg = this.add.image(640, 360, 'bg')
 
         const map = this.make.tilemap({key:'map'})
-        const tileset = map.addTilesetImage('magetiles', 'magetiles') //grab the tiled tileset file "tileset" from "tiles" image file
+        //const tileset = map.addTilesetImage('magetiles', 'magetiles') //grab the tiled tileset file "tileset" from "tiles" image file
+
+        //EXTRUDED
+        const tileset = map.addTilesetImage('magetiles', 'magetiles-extruded', 80, 80, 1, 2) //grab the tiled tileset file "tileset" from "tiles" image file
 
         layer1 = map.createStaticLayer('Tile Layer 1', tileset, 0, 0)
         layer2 = map.createStaticLayer('Tile Layer 2', tileset, 0, 0)
+
+        //layerCrates = map.createFromObjects()
 
 
         //map.setCollisionByProperty({ collides: true })
@@ -171,16 +178,16 @@ export default class TileMapScene extends Phaser.Scene
                 player.setVelocityX(player.body.velocity.x * 0.9)
                 player.anims.play('playerIdle', true)
             }
-            //move right
-            if(cursors.right?.isDown && !isKnockback) {
-                player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x + runVelocity, -maxVel, maxVel))
-                player.flipX = false;
-                player.anims.play('playerMove', true)
-            }
             //move left
             if(cursors.left?.isDown && !isKnockback) {
                 player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x - runVelocity, -maxVel, maxVel))
                 player.flipX = true;
+                player.anims.play('playerMove', true)
+            }
+            //move right
+            if(cursors.right?.isDown && !isKnockback) {
+                player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x + runVelocity, -maxVel, maxVel))
+                player.flipX = false;
                 player.anims.play('playerMove', true)
             }
         }
