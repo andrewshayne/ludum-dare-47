@@ -1,11 +1,13 @@
 import { Vector } from 'matter'
-import Phaser, { GameObjects } from 'phaser'
+import Phaser, { GameObjects, Physics } from 'phaser'
 
 
 enum action {
     JUMP = 1,
     FIRE
 }
+
+let bg: GameObjects.Image
 
 //player
 let player: Phaser.Physics.Arcade.Sprite
@@ -16,9 +18,12 @@ let knockbackTimer: Phaser.Time.TimerEvent
 //loop actions
 let loopIndex: integer
 let loopActions: integer[]
+let loopActionReady: boolean[]
 let loopImages: Phaser.GameObjects.Sprite[]
 
 //ui elements
+let ringCenter: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1130, 150)
+let ringImageRadius: integer = 100
 let actionRing: Phaser.GameObjects.Sprite
 let jumpIcon: Phaser.GameObjects.Sprite
 let fireIcon: Phaser.GameObjects.Sprite
@@ -49,15 +54,18 @@ export default class TileMapScene extends Phaser.Scene
     
 	preload()
     {
+        //follow path!!
+        this.load.plugin('rexpathfollowerplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexpathfollowerplugin.min.js', true);
+
         this.load.image('bg', 'bg.png')
-        this.load.image('tiles', 'assetTiles.png')
-        this.load.tilemapTiledJSON('map', 'level1.json')
-        this.load.spritesheet('fox_animation', 'magerun192.png', { frameWidth: 192, frameHeight: 206 })
-        this.load.spritesheet('fireball_animation', 'fireball.png', { frameWidth: 55, frameHeight: 55 })
+        this.load.image('magetiles', 'magetiles.png')
+        this.load.tilemapTiledJSON('map', 'magetiles.json')
+        this.load.spritesheet('mage_animation', 'mageanimations.png', { frameWidth: 173, frameHeight: 186 })
+        this.load.spritesheet('fireball_animation', 'fireball.png', { frameWidth: 200, frameHeight: 106 })
 
         //UI elements
         this.load.image('ring', 'ring.png')
-        this.load.image('jump_icon', 'jumparrow.png')
+        this.load.image('jump_icon', 'jumparrow2.png')
         this.load.spritesheet('fire_icon_animation', 'firecharge.png', { frameWidth: 51, frameHeight: 90 })
 
         //audio
@@ -68,10 +76,10 @@ export default class TileMapScene extends Phaser.Scene
     create()
     {
         //set bg
-        this.add.image(0, 0, 'bg')
+        bg = this.add.image(890, 610, 'bg')
 
         const map = this.make.tilemap({key:'map'})
-        const tileset = map.addTilesetImage('assetTiles', 'tiles') //grab the tiled tileset file "tileset" from "tiles" image file
+        const tileset = map.addTilesetImage('magetiles', 'magetiles') //grab the tiled tileset file "tileset" from "tiles" image file
 
         layer1 = map.createStaticLayer('Tile Layer 1', tileset, 0, 0)
         layer2 = map.createStaticLayer('Tile Layer 2', tileset, 0, 0)
@@ -80,23 +88,27 @@ export default class TileMapScene extends Phaser.Scene
         //map.setCollisionByProperty({ collides: true })
 
         ///player
-        player = this.physics.add.sprite(100, 450, 'fox_animation')
-        player.body.setSize(80, 160)
-        player.body.setOffset(58, 32)
+        player = this.physics.add.sprite(80 + 160/2, 440, 'mage_animation')
+        player.body.setSize(76, 160)
+        player.body.setOffset(49, 20)
         //player.setBounce(0.2)
         //player.setFrictionX(0.9)
         //player.setMaxVelocity(500, 500)
 
+        //set camera and follow player
+        this.cameras.main.setBounds(0, 0, bg.displayWidth, bg.displayHeight)
+        this.cameras.main.startFollow(player)
 
         //create UI elements
-        let ringCenter: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1130, 150)
         actionRing = this.add.sprite(ringCenter.x, ringCenter.y, 'ring')
-        jumpIcon = this.add.sprite(ringCenter.x - 100, ringCenter.y, 'jump_icon')
-        fireIcon = this.add.sprite(ringCenter.x + 100, ringCenter.y, 'fire_icon_animation')
+        actionRing.setScrollFactor(0, 0)
+        //jumpIcon = this.add.sprite(ringCenter.x - 100, ringCenter.y, 'jump_icon')
+        //fireIcon = this.add.sprite(ringCenter.x + 100, ringCenter.y, 'fire_icon_animation')
 
         //set loop actions
         loopIndex = 0
-        loopActions = [action.JUMP, action.FIRE, action.JUMP]
+        loopActions = [action.JUMP, action.FIRE, action.JUMP]//, action.FIRE, action.JUMP, action.FIRE]
+        loopActionReady = []
         loopImages = []
 
         this.initLoopUI() 
@@ -116,7 +128,15 @@ export default class TileMapScene extends Phaser.Scene
         this.physics.add.collider(player, layer1)
 
         //fireball x layer1
-        this.physics.add.collider(projectiles, layer1)
+        this.physics.add.collider(projectiles, layer1, this.projectileTileCollide)
+
+
+        //DESTROY OFF-SCREEN PROJECTILES!!!!!
+
+
+
+
+
         
         this.initAnimations()
 
@@ -148,7 +168,7 @@ export default class TileMapScene extends Phaser.Scene
         if(!cursors.right?.isDown && !cursors.left?.isDown) {
             //could decide in here to play idle if velocity is 0, or slowdownrun if velocity != 0
             player.setVelocityX(player.body.velocity.x * 0.9)
-            player.anims.play('playerStill', true)
+            player.anims.play('playerIdle', true)
         }
         //move right
         if(cursors.right?.isDown && !isKnockback) {
@@ -183,6 +203,9 @@ export default class TileMapScene extends Phaser.Scene
                 isKnockback = true
             }
             loopIndex++
+
+            //set new positions for everything in the array!
+            this.rotateLoopUI()
         }
         //strong attack
         if(Phaser.Input.Keyboard.JustDown(key_e)) {
@@ -203,20 +226,22 @@ export default class TileMapScene extends Phaser.Scene
         //player animations
         this.anims.create({
             key: 'playerMove',
-            frames: this.anims.generateFrameNumbers('fox_animation', { frames: [0,0,1,1,2,2,2,3,3,4,4,5,5,5] }),
+            frames: this.anims.generateFrameNumbers('mage_animation', { frames: [6, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 11, 11, 11] }),
             frameRate: 22,
             repeat: -1
         })
         this.anims.create({
-            key: 'playerStill',
-            frames: this.anims.generateFrameNumbers('fox_animation', { start: 1, end: 1})
+            key: 'playerIdle',
+            frames: this.anims.generateFrameNumbers('mage_animation', { frames: [0,0,1,2,3] }),
+            frameRate: 7,
+            repeat: -1
         })
 
         //projectile animation
         this.anims.create({
             key: 'shoot',
-            frames: this.anims.generateFrameNumbers('fireball_animation', { start: 0, end: 5 }),
-            frameRate: 10,
+            frames: this.anims.generateFrameNumbers('fireball_animation', { start: 0, end: 7 }),
+            frameRate: 22,
             repeat: -1
         })
 
@@ -242,11 +267,17 @@ export default class TileMapScene extends Phaser.Scene
         p.body.reset(x, y)
         p.setActive(true)
         p.setVisible(true)
+        p.flipX = player.flipX
         if(player.flipX)
             p.setVelocityX(-fireVelocity)
         else
             p.setVelocityX(fireVelocity)
         p.anims.play('shoot', true)
+    }
+    
+    projectileTileCollide(projectile) {
+        projectile.setActive(false)
+        projectile.setVisible(false)
     }
 
     unlockPlayerMovement() {
@@ -256,19 +287,54 @@ export default class TileMapScene extends Phaser.Scene
     initLoopUI() {
         //dynamically create icons for loop actions
         loopActions.forEach((elem, index) => {
-            let x = index*300
+            let x = index*150 + 100
             let y = 100
+            let iconSprite: Phaser.GameObjects.Sprite
+
+            //list of items handled by timers to indicate if they are actionable or not yet!
+            loopActionReady.push(true)
+
             if(elem == action.JUMP) {
-                loopImages.push(this.add.sprite(x, y, 'jump_icon'))
+                iconSprite = this.add.sprite(x, y, 'jump_icon')
             }
-            if(elem == action.FIRE) {
-                loopImages.push(this.add.sprite(x, y, 'fire_icon_animation'))
+            else { //elem == action.FIRE
+                iconSprite = this.add.sprite(x, y, 'fire_icon_animation')
             }
-            this.add.text(x, y-100, (index+1).toString(), { fontFamily: 'Georgia', fontSize: '42px'})
-            
-                //position
-                //loopImages[loopImages.length-1].setPosition(index * 300 + 200, 100)
+            iconSprite.setScrollFactor(0, 0)
+            loopImages.push(iconSprite)
+            this.add.text(x-10, y-90, (index+1).toString(), { fontFamily: 'Georgia', fontSize: '42px'})
         })
+    }
+
+    //rotate icons around center, with distance of radius
+    rotateLoopUI() {
+        /*
+        let pos_x = loopImages[loopImages.length-1].x
+        let pos_y = loopImages[loopImages.length-1].y
+        for(let i = loopImages.length-1; i > 0; i--) {
+            //set each image pos to the one before it
+            loopImages[i].setPosition(loopImages[i-1].x, loopImages[i-1].y)
+        }
+        loopImages[0].setPosition(pos_x, pos_y)
+        */
+
+        //use each item's index and the mod index to determine position of each object
+        //try to 'tween' from old to new index!
+
+        console.log('hooooh:', loopImages.length)
+
+        //rotation amount is 2PI / loopImages.length
+
+        loopImages.forEach((elem, index) => {
+            this.tweens.add({
+                targets: elem,
+                duration: 500,
+                ease: 'Sine.easeOut',
+                x: () => { return ringCenter.x + ringImageRadius * Math.cos(((2*Math.PI) * (loopIndex - index)) / loopImages.length) },
+                y: () => { return ringCenter.y + ringImageRadius * Math.sin(((2*Math.PI) * (loopIndex - index)) / loopImages.length) }
+            })
+        })
+
     }
 }
 
