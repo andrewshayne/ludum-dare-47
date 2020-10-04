@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
-import HelloWorldScene from './scenes/HelloWorldScene'
-import TileMapScene from './scenes/TileMapScene'
+import TitleScene from './scenes/TitleScene'
+import GameScene from './scenes/GameScene'
 
 const config: Phaser.Types.Core.GameConfig = {
 	type: Phaser.AUTO,
@@ -10,15 +10,15 @@ const config: Phaser.Types.Core.GameConfig = {
 	audio: {
 		disableWebAudio: true,
 		noAudio: false
-	}
+	},
 	physics: {
 		default: 'arcade',
 		arcade: {
-			debug: true,
+			debug: false,
 			gravity: { y: 1600 }
 		}
 	},
-	scene: [TileMapScene, HelloWorldScene] //looks like it defaults to the first scene in the list
+	scene: [TitleScene, GameScene] //looks like it defaults to the first scene in the list
 }
 
 export default new Phaser.Game(config)
