@@ -32,18 +32,22 @@ let fireIcon: Phaser.GameObjects.Sprite
 let layer1: Phaser.Tilemaps.StaticTilemapLayer
 let layer2: Phaser.Tilemaps.StaticTilemapLayer
 let layer3: Phaser.Tilemaps.StaticTilemapLayer
+let crates: Phaser.GameObjects.Sprite[]
 
 
 //player projectiles
 let projectiles: Phaser.GameObjects.Group
+let cratesGroup: Phaser.GameObjects.Group
 
 //keyboard variables
 let key_space: Phaser.Input.Keyboard.Key
 let key_e: Phaser.Input.Keyboard.Key
 
 //audio
+let music: Phaser.Sound.BaseSound
 let fire_sound: Phaser.Sound.BaseSound
 let jump_sound: Phaser.Sound.BaseSound
+let cratebreak_sound: Phaser.Sound.BaseSound
 
 export default class TileMapScene extends Phaser.Scene
 {
@@ -54,24 +58,23 @@ export default class TileMapScene extends Phaser.Scene
     
 	preload()
     {
-        //follow path!!
-        this.load.plugin('rexpathfollowerplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexpathfollowerplugin.min.js', true);
-
         this.load.image('bg', 'cave_bg.png')
         //this.load.image('magetiles', 'magetiles.png')
         this.load.image('magetiles-extruded', 'magetiles-extruded.png')
         this.load.tilemapTiledJSON('map', 'magetiles.json')
         this.load.spritesheet('mage_animation', 'mageanimations.png', { frameWidth: 173, frameHeight: 186 })
-        this.load.spritesheet('fireball_animation', 'fireball.png', { frameWidth: 200, frameHeight: 106 })
+        this.load.spritesheet('fireball_animation', 'fireballanimationfull.png', { frameWidth: 160, frameHeight: 308 })
 
         //UI elements
         this.load.image('ring', 'ring.png')
-        this.load.image('jump_icon', 'jumparrow2.png')
+        this.load.image('jump_icon', 'jumparrowsolid.png')
         this.load.spritesheet('fire_icon_animation', 'firecharge.png', { frameWidth: 51, frameHeight: 90 })
 
         //audio
+        this.load.audio('music', 'music/library.wav')
         this.load.audio('fire_sfx', 'sfx/fireballs/Fireball1.wav')
         this.load.audio('jump_sfx', 'sfx/landing/Landing.wav')
+        this.load.audio('cratebreak_sfx', 'sfx/crate/cratebreak.wav')
     }
 
     create()
@@ -80,27 +83,26 @@ export default class TileMapScene extends Phaser.Scene
         bg = this.add.image(890, 610, 'bg')
         //bg = this.add.image(640, 360, 'bg')
 
-        const map = this.make.tilemap({key:'map'})
-        //const tileset = map.addTilesetImage('magetiles', 'magetiles') //grab the tiled tileset file "tileset" from "tiles" image file
+        const map = this.make.tilemap({ key:'map' })
 
         //EXTRUDED
         const tileset = map.addTilesetImage('magetiles', 'magetiles-extruded', 80, 80, 1, 2) //grab the tiled tileset file "tileset" from "tiles" image file
+        //NON-EXTRUDED
+        //const tileset = map.addTilesetImage('magetiles', 'magetiles') //grab the tiled tileset file "tileset" from "tiles" image file
 
         layer1 = map.createStaticLayer('Tile Layer 1', tileset, 0, 0)
         layer2 = map.createStaticLayer('Tile Layer 2', tileset, 0, 0)
+        crates = map.createFromObjects('Crates', 2, { key: 'mage_animation' })
+        //this.physics.world.enable(crates)
 
-        //layerCrates = map.createFromObjects()
-
-
-        //map.setCollisionByProperty({ collides: true })
+        cratesGroup = this.add.group(crates)
+        this.physics.world.enable(cratesGroup)
 
         ///player
         player = this.physics.add.sprite(80 + 160/2, 440, 'mage_animation')
         player.body.setSize(76, 160)
         player.body.setOffset(49, 20)
-        //player.setBounce(0.2)
-        //player.setFrictionX(0.9)
-        //player.setMaxVelocity(500, 500)
+        player.setMaxVelocity(800, 800)
 
         //set camera and follow player
         this.cameras.main.setBounds(0, 0, bg.displayWidth, bg.displayHeight)
@@ -109,8 +111,6 @@ export default class TileMapScene extends Phaser.Scene
         //create UI elements
         actionRing = this.add.sprite(ringCenter.x, ringCenter.y, 'ring')
         actionRing.setScrollFactor(0, 0)
-        //jumpIcon = this.add.sprite(ringCenter.x - 100, ringCenter.y, 'jump_icon')
-        //fireIcon = this.add.sprite(ringCenter.x + 100, ringCenter.y, 'fire_icon_animation')
 
         //set loop actions
         loopIndex = 0
@@ -120,13 +120,13 @@ export default class TileMapScene extends Phaser.Scene
 
         this.initLoopUI() 
 
-        //set player bools
-        isJumping = false
-        isKnockback = false
-
         //create projectile group
         projectiles = this.physics.add.group({key: 'projectiles', immovable: true, allowGravity: false})
         projectiles.createMultiple({ classType: Phaser.Physics.Arcade.Sprite, quantity: 10, active: false, visible: false, key: 'fireball_animation' })
+
+        //set player bools
+        isJumping = false
+        isKnockback = false
 
         //COLLISIONS
 
@@ -134,31 +134,54 @@ export default class TileMapScene extends Phaser.Scene
         layer1.setCollisionBetween(0,99)
         this.physics.add.collider(player, layer1)
 
-        //fireball x layer1
-        this.physics.add.collider(projectiles, layer1, this.projectileTileCollide)
+        //player x crate
+        this.physics.add.collider(player, crates)
 
+        //fireball x layer1
+        this.physics.add.collider(projectiles, layer1, function(projectile, tile) {
+            projectile.anims.play('poof', true)
+            projectile.setVelocityX(0)
+            projectile.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
+                projectile.setActive(false)
+                projectile.setVisible(false)
+                projectile.setPosition(0, 0)
+            })
+        })
+
+        //fireball x crate
+        this.physics.add.collider(crates, projectiles, function(crate, projectile) {
+            projectile.anims.play('poof', true)
+            projectile.setVelocityX(0)
+            projectile.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
+                projectile.setActive(false)
+                projectile.setVisible(false)
+                projectile.setPosition(0, 0)
+            })
+            crate.destroy()
+            cratebreak_sound.play()
+        })
+
+        //crate x layer1
+        this.physics.add.collider(crates, layer1)
 
         //DESTROY OFF-SCREEN PROJECTILES!!!!!
-
-
-
-
-
         
         this.initAnimations()
-
-        
-
         ///
-
 
         //keys
         key_space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
         key_e = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
 
         //audio
-        fire_sound = this.sound.add('fire_sfx')
+        music = this.sound.add('music', { volume: 0.4, loop: true })
+        fire_sound = this.sound.add('fire_sfx', { volume: 0.2 })
         jump_sound = this.sound.add('jump_sfx')
+        cratebreak_sound = this.sound.add('cratebreak_sfx')
+
+        this.sound.pauseOnBlur = false
+
+        music.play()
     }
 
     update(time, delta)
@@ -167,7 +190,7 @@ export default class TileMapScene extends Phaser.Scene
         const runVelocity = 100
         const maxVel = 300
         const knockbackVelocity = 800
-        const jumpVelocity = 500
+        const jumpVelocity = 600
 
         if(!isKnockback) {
             player.setVelocityX(player.body.velocity.x * 0.9)
@@ -176,7 +199,11 @@ export default class TileMapScene extends Phaser.Scene
             if(!cursors.right?.isDown && !cursors.left?.isDown && !isKnockback) {
                 //could decide in here to play idle if velocity is 0, or slowdownrun if velocity != 0
                 player.setVelocityX(player.body.velocity.x * 0.9)
-                player.anims.play('playerIdle', true)
+
+                if(player.body.velocity.x > -20 && player.body.velocity.x < 20)
+                    player.anims.play('playerIdle', true)
+                else
+                    player.anims.play('stopping', true)
             }
             //move left
             if(cursors.left?.isDown && !isKnockback) {
@@ -241,6 +268,12 @@ export default class TileMapScene extends Phaser.Scene
             repeat: -1
         })
         this.anims.create({
+            key: 'stopping',
+            frames: this.anims.generateFrameNumbers('mage_animation', { frames: [9] }),
+            frameRate: 1,
+            repeat: -1
+        })
+        this.anims.create({
             key: 'playerIdle',
             frames: this.anims.generateFrameNumbers('mage_animation', { frames: [0,0,1,2,3] }),
             frameRate: 7,
@@ -251,8 +284,13 @@ export default class TileMapScene extends Phaser.Scene
         this.anims.create({
             key: 'shoot',
             frames: this.anims.generateFrameNumbers('fireball_animation', { start: 0, end: 7 }),
-            frameRate: 22,
+            frameRate: 44,
             repeat: -1
+        })
+        this.anims.create({
+            key: 'poof',
+            frames: this.anims.generateFrameNumbers('fireball_animation', { start: 8, end: 15 }),
+            frameRate: 44 //44
         })
 
         //fire icon animation
@@ -284,10 +322,16 @@ export default class TileMapScene extends Phaser.Scene
             p.setVelocityX(fireVelocity)
         p.anims.play('shoot', true)
     }
-    
-    projectileTileCollide(projectile) {
-        projectile.setActive(false)
-        projectile.setVisible(false)
+
+    projectileCrateCollide(projectile, crate) {
+        console.log('?????', projectile)
+        projectile.anims.play('poof', true)
+        //projectile.setVelocityX(0)
+        projectile.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
+            projectile.setActive(false)
+            projectile.setVisible(false)
+        })
+        //crate.destroy()
     }
 
     unlockPlayerMovement() {
@@ -309,6 +353,8 @@ export default class TileMapScene extends Phaser.Scene
             }
             else { //elem == action.FIRE
                 iconSprite = this.add.sprite(x, y, 'fire_icon_animation')
+                iconSprite.setSize(80, 80)
+                //iconSprite.setof .setOffset(49, 20)
             }
             iconSprite.setScrollFactor(0, 0)
             loopImages.push(iconSprite)
@@ -332,5 +378,3 @@ export default class TileMapScene extends Phaser.Scene
         })
     }
 }
-
-
