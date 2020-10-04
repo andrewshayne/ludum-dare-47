@@ -159,29 +159,32 @@ export default class TileMapScene extends Phaser.Scene
         const cursors = this.input.keyboard.createCursorKeys()
         const runVelocity = 100
         const maxVel = 300
-        const knockbackVelocity = 1500
+        const knockbackVelocity = 800
         const jumpVelocity = 500
 
-        player.setVelocityX(player.body.velocity.x * 0.9)
-        
-        //no horizontal movement
-        if(!cursors.right?.isDown && !cursors.left?.isDown) {
-            //could decide in here to play idle if velocity is 0, or slowdownrun if velocity != 0
+        if(!isKnockback) {
             player.setVelocityX(player.body.velocity.x * 0.9)
-            player.anims.play('playerIdle', true)
+        
+            //no horizontal movement
+            if(!cursors.right?.isDown && !cursors.left?.isDown && !isKnockback) {
+                //could decide in here to play idle if velocity is 0, or slowdownrun if velocity != 0
+                player.setVelocityX(player.body.velocity.x * 0.9)
+                player.anims.play('playerIdle', true)
+            }
+            //move right
+            if(cursors.right?.isDown && !isKnockback) {
+                player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x + runVelocity, -maxVel, maxVel))
+                player.flipX = false;
+                player.anims.play('playerMove', true)
+            }
+            //move left
+            if(cursors.left?.isDown && !isKnockback) {
+                player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x - runVelocity, -maxVel, maxVel))
+                player.flipX = true;
+                player.anims.play('playerMove', true)
+            }
         }
-        //move right
-        if(cursors.right?.isDown && !isKnockback) {
-            player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x + runVelocity, -maxVel, maxVel))
-            player.flipX = false;
-            player.anims.play('playerMove', true)
-        }
-        //move left
-        if(cursors.left?.isDown && !isKnockback) {
-            player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x - runVelocity, -maxVel, maxVel))
-            player.flipX = true;
-            player.anims.play('playerMove', true)
-        }
+
         //jump - ADD TIMER!!!
         //also fire now!
         if(Phaser.Input.Keyboard.JustDown(key_space)) {
@@ -199,7 +202,7 @@ export default class TileMapScene extends Phaser.Scene
                 else
                     player.setVelocityX(-knockbackVelocity)
                 fire_sound.play()
-                knockbackTimer = this.time.delayedCall(400, this.unlockPlayerMovement) //disallow player input for x milliseconds
+                knockbackTimer = this.time.delayedCall(250, this.unlockPlayerMovement) //disallow player input for x milliseconds
                 isKnockback = true
             }
             loopIndex++
@@ -291,7 +294,7 @@ export default class TileMapScene extends Phaser.Scene
             let y = 100
             let iconSprite: Phaser.GameObjects.Sprite
 
-            //list of items handled by timers to indicate if they are actionable or not yet!
+            //list of items handled by timers t/knocko indicate if they are actionable or not yet!
             loopActionReady.push(true)
 
             if(elem == action.JUMP) {
@@ -308,33 +311,18 @@ export default class TileMapScene extends Phaser.Scene
 
     //rotate icons around center, with distance of radius
     rotateLoopUI() {
-        /*
-        let pos_x = loopImages[loopImages.length-1].x
-        let pos_y = loopImages[loopImages.length-1].y
-        for(let i = loopImages.length-1; i > 0; i--) {
-            //set each image pos to the one before it
-            loopImages[i].setPosition(loopImages[i-1].x, loopImages[i-1].y)
-        }
-        loopImages[0].setPosition(pos_x, pos_y)
-        */
-
-        //use each item's index and the mod index to determine position of each object
-        //try to 'tween' from old to new index!
-
-        console.log('hooooh:', loopImages.length)
-
-        //rotation amount is 2PI / loopImages.length
+        //rotation amount is 2*PI / loopImages.length
+        let rotateAmount = 2*Math.PI / loopImages.length
 
         loopImages.forEach((elem, index) => {
             this.tweens.add({
                 targets: elem,
                 duration: 500,
                 ease: 'Sine.easeOut',
-                x: () => { return ringCenter.x + ringImageRadius * Math.cos(((2*Math.PI) * (loopIndex - index)) / loopImages.length) },
-                y: () => { return ringCenter.y + ringImageRadius * Math.sin(((2*Math.PI) * (loopIndex - index)) / loopImages.length) }
+                x: () => { return ringCenter.x + ringImageRadius * Math.cos(rotateAmount * (loopIndex-index)) },
+                y: () => { return ringCenter.y + ringImageRadius * Math.sin(rotateAmount * (loopIndex-index)) }
             })
         })
-
     }
 }
 
