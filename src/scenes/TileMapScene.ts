@@ -119,7 +119,7 @@ export default class TileMapScene extends Phaser.Scene
 
         //create projectile group
         projectiles = this.physics.add.group({key: 'projectiles', immovable: true, allowGravity: false})
-        projectiles.createMultiple({ classType: Phaser.Physics.Arcade.Sprite, quantity: 5, active: false, visible: false, key: 'fireball_animation' })
+        projectiles.createMultiple({ classType: Phaser.Physics.Arcade.Sprite, quantity: 10, active: false, visible: false, key: 'fireball_animation' })
 
         //COLLISIONS
 
