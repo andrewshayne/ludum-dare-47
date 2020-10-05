@@ -51,7 +51,7 @@ export default class TitleScene extends Phaser.Scene
     {
         if(Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE))) {
             titleMusic.stop()
-            this.scene.start('game-scene', { STAGE_LEVEL: 1, playerX: 160, playerY: 540})
+            this.scene.start('game-scene', { STAGE_LEVEL: 1, playerX: 160, playerY: 440})
         }
     }
 }

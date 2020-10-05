@@ -447,7 +447,7 @@ export default class GameScene extends Phaser.Scene
         if(player.body.y - player.body.height >= map.heightInPixels) {
             //PASS player spawn position HERE!!! for next level
 
-            this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL, playerX: 0, playerY: 0})
+            this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL, playerX: 160, playerY: 440 })
         }
         //check win condition to move to next level!
         if(player.body.x + player.body.width >= map.widthInPixels) {
@@ -457,12 +457,12 @@ export default class GameScene extends Phaser.Scene
                 //you win!
                 isKnockback = false
                 footsteps_sound.stop()  
-                this.scene.start('title-scene', { COMPLETED_GAME: true })
+                this.scene.start('title-scene', { COMPLETED_GAME: true, playerX: 160, playerY: 440 })
             }
             else {
                 //next level
                 isKnockback = false
-                this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL + 1})
+                this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL + 1, playerX: 160, playerY: 440})
             }
         }
     }
