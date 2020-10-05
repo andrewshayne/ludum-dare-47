@@ -1,4 +1,3 @@
-import { Vector } from 'matter'
 import Phaser, { GameObjects, Physics } from 'phaser'
 
 
@@ -6,6 +5,9 @@ enum action {
     JUMP = 1,
     FIRE
 }
+
+const LEVEL_COUNT = 2
+let STAGE_LEVEL: integer
 
 let bg: GameObjects.Image
 
@@ -28,7 +30,10 @@ let actionRing: Phaser.GameObjects.Sprite
 let jumpIcon: Phaser.GameObjects.Sprite
 let fireIcon: Phaser.GameObjects.Sprite
 
+let map: Phaser.Tilemaps.Tilemap
+
 //layers
+let layer1b: Phaser.Tilemaps.StaticTilemapLayer
 let layer1: Phaser.Tilemaps.StaticTilemapLayer
 let layer2: Phaser.Tilemaps.StaticTilemapLayer
 let layer3: Phaser.Tilemaps.StaticTilemapLayer
@@ -51,17 +56,27 @@ let cratebreak_sound: Phaser.Sound.BaseSound
 
 export default class GameScene extends Phaser.Scene
 {
-	constructor()
+	constructor(STAGE_LEVEL: integer)
 	{
 		super('game-scene')
+    }
+
+    init(data)
+    {
+        STAGE_LEVEL = data.STAGE_LEVEL
     }
     
 	preload()
     {
+        console.log('level: ', STAGE_LEVEL)
+
+        this.load.tilemapTiledJSON('map1', 'magetiles1.json')
+        this.load.tilemapTiledJSON('map2', 'magetiles2.json')
+        //this.load.tilemapTiledJSON('map3', 'magetiles3.json')
+
         this.load.image('bg', 'cave_bg_fit.png')
         //this.load.image('magetiles', 'magetiles.png')
         this.load.image('magetiles-extruded', 'magetiles-extruded.png')
-        this.load.tilemapTiledJSON('map', 'magetiles.json')
         this.load.spritesheet('mage_animation', 'mageanimations.png', { frameWidth: 173, frameHeight: 186 })
         this.load.spritesheet('fireball_animation', 'fireballanimationfull.png', { frameWidth: 160, frameHeight: 308 })
         this.load.spritesheet('crate', 'cratepoof.png', { frameWidth: 160, frameHeight: 160 })
@@ -81,23 +96,24 @@ export default class GameScene extends Phaser.Scene
 
     create()
     {
-        //set bg
+        //set large bg
         //bg = this.add.image(890, 610, 'bg')
 
-        //1280x720
+        //set 1280x720 bg
         bg = this.add.image(640, 360, 'bg')
 
+        //make bg static
         bg.setScrollFactor(0, 0)
 
-        const map = this.make.tilemap({ key:'map' })
+        map = this.make.tilemap({ key: 'map' + STAGE_LEVEL })
 
         //EXTRUDED
         const tileset = map.addTilesetImage('magetiles', 'magetiles-extruded', 80, 80, 1, 2) //grab the tiled tileset file "tileset" from "tiles" image file
         //NON-EXTRUDED
         //const tileset = map.addTilesetImage('magetiles', 'magetiles') //grab the tiled tileset file "tileset" from "tiles" image file
 
-        layer1 = map.createStaticLayer('Tile Layer 1', tileset, 0, 0)
-        layer2 = map.createStaticLayer('Tile Layer 2', tileset, 0, 0)
+        layer1 = map.createStaticLayer('CollideLayer', tileset, 0, 0)
+        layer2 = map.createStaticLayer('BehindLayer', tileset, 0, 0)
         crates = map.createFromObjects('Crates', 'crate', { key: 'crate' })
         //this.physics.world.enable(crates)
 
@@ -109,6 +125,9 @@ export default class GameScene extends Phaser.Scene
         player.body.setSize(76, 160)
         player.body.setOffset(49, 20)
         player.setMaxVelocity(800, 500)
+
+        //foreground layers in front of player
+        layer1b = map.createStaticLayer('ForegroundLayer', tileset, 0, 0)
 
         //set camera and follow player
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels) //bg.displayWidth, bg.displayHeight)
@@ -212,6 +231,7 @@ export default class GameScene extends Phaser.Scene
         this.sound.pauseOnBlur = false
 
         music.play()
+        this.add.text(40, 660, 'Level ' + STAGE_LEVEL.toString(), { fontFamily: 'Georgia', fontSize: '24px' })
     }
 
     update(time, delta)
@@ -222,6 +242,7 @@ export default class GameScene extends Phaser.Scene
         const knockbackVelocity = 800
         const jumpVelocity = 600
         const isAirborne = player.body.velocity.y != 0 && !player.body.touching.down
+
 
         if(!isKnockback) {
             player.setVelocityX(player.body.velocity.x * 0.9)
@@ -304,6 +325,21 @@ export default class GameScene extends Phaser.Scene
                 player.anims.play('playerFall', true)
         }
 
+        //check win condition to move to next level!
+        if(player.body.x + player.body.width >= map.widthInPixels) {
+            this.registry.destroy()
+            if(STAGE_LEVEL == LEVEL_COUNT) {
+                console.log('win')
+                //you win!
+                this.scene.start('title-scene', { COMPLETED_GAME: true })
+            }
+            else {
+                console.log('next level')
+                //next level
+                this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL + 1})
+            }
+
+        }
     }
 
     initAnimations() {
