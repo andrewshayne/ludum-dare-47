@@ -95,11 +95,11 @@ export default class GameScene extends Phaser.Scene
         this.load.spritesheet('fire_icon_animation', 'firecharge.png', { frameWidth: 51, frameHeight: 90 })
 
         //audio
-        this.load.audio('music', 'music/library.wav')
-        this.load.audio('fire_sfx', 'sfx/fireballs/Fireball1.wav')
-        this.load.audio('jump_sfx', 'sfx/landing/Landing.wav')
-        this.load.audio('cratebreak_sfx', 'sfx/crate/cratebreak.wav')
-        this.load.audio('footsteps_sfx', 'sfx/footsteps/footsteps.wav')
+        this.load.audio('music', 'music/library.ogg')
+        this.load.audio('fire_sfx', 'sfx/fireballs/Fireball1.ogg')
+        this.load.audio('jump_sfx', 'sfx/landing/Landing.ogg')
+        this.load.audio('cratebreak_sfx', 'sfx/crate/cratebreak.ogg')
+        this.load.audio('footsteps_sfx', 'sfx/footsteps/footsteps.ogg')
     }
 
     create()
@@ -447,7 +447,7 @@ export default class GameScene extends Phaser.Scene
         if(player.body.y - player.body.height >= map.heightInPixels) {
             //PASS player spawn position HERE!!! for next level
 
-            this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL, playerX: 160, playerY: 440 })
+            this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL, playerX: playerX, playerY: playerY })
         }
         //check win condition to move to next level!
         if(player.body.x + player.body.width >= map.widthInPixels) {
@@ -457,12 +457,12 @@ export default class GameScene extends Phaser.Scene
                 //you win!
                 isKnockback = false
                 footsteps_sound.stop()  
-                this.scene.start('title-scene', { COMPLETED_GAME: true, playerX: 160, playerY: 440 })
+                this.scene.start('title-scene', { COMPLETED_GAME: true })
             }
             else {
                 //next level
                 isKnockback = false
-                this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL + 1, playerX: 160, playerY: 440})
+                this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL + 1, playerX: 160, playerY: 900})
             }
         }
     }

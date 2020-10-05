@@ -17,7 +17,7 @@ export default class TitleScene extends Phaser.Scene
 
 	preload()
     {
-        this.load.audio('menumusic', 'music/menu.wav')
+        this.load.audio('menumusic', 'music/menu.ogg')
     }
 
     create()
