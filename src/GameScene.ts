@@ -42,7 +42,7 @@ let crates: Phaser.GameObjects.Sprite[]
 
 
 //player projectiles
-let projectiles: Phaser.GameObjects.Group
+let projectiles
 
 //crate group
 let cratesGroup: Phaser.GameObjects.Group
@@ -131,7 +131,7 @@ export default class GameScene extends Phaser.Scene
         ///player
         player = this.physics.add.sprite(playerX, playerY, 'mage_animation')
         player.body.setSize(50, 160)
-        player.body.setOffset(80, 20)
+        player.body.setOffset(60, 20)
         player.setMaxVelocity(800, 600)
 
         //set camera and follow player
@@ -255,8 +255,8 @@ export default class GameScene extends Phaser.Scene
 
         this.initAnimations()
         this.sound.pauseOnBlur = false
-        //if(!music.isPlaying)
-            //music.play()
+        if(!music.isPlaying)
+            music.play()
 
         let levelText = this.add.text(10, 684, 'Level ' + STAGE_LEVEL.toString(), { fontFamily: 'Georgia', fontSize: '28px' })
         levelText.setScrollFactor(0, 0)

@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"target": "es2016",
+		"target": "es5",
 		"module": "es6",
 		"strict": true,
 		"noImplicitAny": false,
@@ -26,6 +26,6 @@
 		]
 	},
 	"include": [
-		"src/**/*"
+		"main.ts", "src/TitleScene.ts", "GameScene.ts"
 	]
 }
