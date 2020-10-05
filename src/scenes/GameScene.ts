@@ -8,13 +8,14 @@ enum action {
 
 const LEVEL_COUNT = 2
 let STAGE_LEVEL: integer
+let playerX: integer
+let playerY: integer
 
 let bg: GameObjects.Image
 
 //player
 let player: Phaser.Physics.Arcade.Sprite
-let isJumping: boolean
-let isKnockback: boolean
+let isKnockback = false
 let knockbackTimer: Phaser.Time.TimerEvent
 
 //loop actions
@@ -24,12 +25,12 @@ let loopActionReady: boolean[]
 let loopImages: Phaser.GameObjects.Sprite[]
 
 //ui elements
-let ringCenter: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1130, 150)
-let ringImageRadius: integer = 100
+let ringCenter: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1150, 130)
+let ringImageRadius: integer = 60
 let actionRing: Phaser.GameObjects.Sprite
-let jumpIcon: Phaser.GameObjects.Sprite
-let fireIcon: Phaser.GameObjects.Sprite
+let ringSelect: Phaser.GameObjects.Sprite
 
+//map
 let map: Phaser.Tilemaps.Tilemap
 
 //layers
@@ -42,6 +43,8 @@ let crates: Phaser.GameObjects.Sprite[]
 
 //player projectiles
 let projectiles: Phaser.GameObjects.Group
+
+//crate group
 let cratesGroup: Phaser.GameObjects.Group
 
 //keyboard variables
@@ -53,6 +56,7 @@ let music: Phaser.Sound.BaseSound
 let fire_sound: Phaser.Sound.BaseSound
 let jump_sound: Phaser.Sound.BaseSound
 let cratebreak_sound: Phaser.Sound.BaseSound
+let footsteps_sound: Phaser.Sound.BaseSound
 
 export default class GameScene extends Phaser.Scene
 {
@@ -64,6 +68,8 @@ export default class GameScene extends Phaser.Scene
     init(data)
     {
         STAGE_LEVEL = data.STAGE_LEVEL
+        playerX = data.playerX
+        playerY = data.playerY
     }
     
 	preload()
@@ -84,6 +90,7 @@ export default class GameScene extends Phaser.Scene
 
         //UI elements
         this.load.image('ring', 'ring.png')
+        this.load.image('ring_select', 'ringselect.png')
         this.load.image('jump_icon', 'jumparrowsolid.png')
         this.load.spritesheet('fire_icon_animation', 'firecharge.png', { frameWidth: 51, frameHeight: 90 })
 
@@ -92,6 +99,7 @@ export default class GameScene extends Phaser.Scene
         this.load.audio('fire_sfx', 'sfx/fireballs/Fireball1.wav')
         this.load.audio('jump_sfx', 'sfx/landing/Landing.wav')
         this.load.audio('cratebreak_sfx', 'sfx/crate/cratebreak.wav')
+        this.load.audio('footsteps_sfx', 'sfx/footsteps/footsteps.wav')
     }
 
     create()
@@ -121,21 +129,14 @@ export default class GameScene extends Phaser.Scene
         this.physics.world.enable(cratesGroup)
 
         ///player
-        player = this.physics.add.sprite(80 + 160/2, 440, 'mage_animation')
-        player.body.setSize(76, 160)
-        player.body.setOffset(49, 20)
-        player.setMaxVelocity(800, 500)
-
-        //foreground layers in front of player
-        layer1b = map.createStaticLayer('ForegroundLayer', tileset, 0, 0)
+        player = this.physics.add.sprite(playerX, playerY, 'mage_animation')
+        player.body.setSize(50, 160)
+        player.body.setOffset(80, 20)
+        player.setMaxVelocity(800, 600)
 
         //set camera and follow player
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels) //bg.displayWidth, bg.displayHeight)
         this.cameras.main.startFollow(player)
-
-        //create UI elements
-        actionRing = this.add.sprite(ringCenter.x, ringCenter.y, 'ring')
-        actionRing.setScrollFactor(0, 0)
 
         //set loop actions
         loopIndex = 0
@@ -143,15 +144,22 @@ export default class GameScene extends Phaser.Scene
         loopActionReady = []
         loopImages = []
 
-        this.initLoopUI() 
-
         //create projectile group
         projectiles = this.physics.add.group({key: 'projectiles', immovable: true, allowGravity: false})
         projectiles.createMultiple({ classType: Phaser.Physics.Arcade.Sprite, quantity: 10, active: false, visible: false, key: 'fireball_animation' })
 
-        //set player bools
-        isJumping = false
-        isKnockback = false
+        //foreground layers in front of player
+        layer1b = map.createStaticLayer('ForegroundLayer', tileset, 0, 0)
+
+        //create UI elements
+        actionRing = this.add.sprite(ringCenter.x, ringCenter.y, 'ring')
+        actionRing.setScrollFactor(0, 0)
+
+        this.initLoopUI() 
+
+        ringSelect = this.add.sprite(ringCenter.x, ringCenter.y, 'ring_select')
+        ringSelect.setScrollFactor(0, 0)
+
 
         //COLLISIONS
 
@@ -168,13 +176,15 @@ export default class GameScene extends Phaser.Scene
                 projectile.setActive(false)
                 projectile.setVisible(false)
                 projectile.setPosition(0, 0)
+                projectile.body.velocity.x = 0
             })
         })
 
         //fireball x crate
-        this.physics.add.collider(crates, projectiles, function(crate, projectile) {
+        this.physics.add.collider(crates, projectiles, function(crate, projectile) { }, function(crate, projectile) {
             projectile.anims.play('poof', true)
             projectile.setVelocityX(0)
+            projectile.setInteractive(false)
             projectile.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
                 projectile.setActive(false)
                 projectile.setVisible(false)
@@ -182,23 +192,22 @@ export default class GameScene extends Phaser.Scene
             })
 
             crate.anims.play('cratePoof', true)
-            cratebreak_sound.play()
+            if(!cratebreak_sound.isPlaying)
+                cratebreak_sound.play()
             crate.setInteractive(false)
             crate.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
                 crate.destroy()
             })
         })
 
-        //crate x crate
-        this.physics.add.collider(crates, crates, function(c1, c2) {
-
-        })
 
         //player x crate
-        this.physics.add.collider(player, crates, function(p, c) {
+        this.physics.add.collider(player, cratesGroup, function(p, c) {
             //player on top of crate
             //if(c.body.touching.up == true) {
-            //    p.body.velocity.y = 0
+                //p.body.velocity.y = 0
+                //p.body.y = c.body.position.y - p.height
+                //c.body.velocity.y = 0
             //}
             if(c.body.touching.left == true || c.body.touching.right == true) {
                 p.body.velocity.x = p.body.velocity.x * 0.1
@@ -206,17 +215,31 @@ export default class GameScene extends Phaser.Scene
             }
         })
 
+
         //crate x layer1
         this.physics.add.collider(crates, layer1, function(c, t) {
+            //c.body.velocity.x = 0
+            //if(c.body.touching.down) {
+            //    c.body.position.y = t.body.position.y - c.height
+            //}
             c.body.velocity.x = 0
         })
 
+        //crate x crate
+        this.physics.add.collider(crates, crates, ()=>{}, function(c1, c2) {
+            if(c1.body.x < c2.body.x) {
+                c1.body.velocity.x -= 1
+                c2.body.velocity.x += 1
+            }
+            else {
+                c1.body.velocity.x += 1
+                c2.body.velocity.x -= 1
+            }
+            c1.body.immovable = true
+            c2.body.immovable = true
+        })
         
 
-        //DESTROY OFF-SCREEN PROJECTILES!!!!!
-        
-        this.initAnimations()
-        ///
 
         //keys
         key_space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
@@ -226,12 +249,17 @@ export default class GameScene extends Phaser.Scene
         music = this.sound.add('music', { volume: 0.4, loop: true })
         fire_sound = this.sound.add('fire_sfx', { volume: 0.2 })
         jump_sound = this.sound.add('jump_sfx')
-        cratebreak_sound = this.sound.add('cratebreak_sfx', { volume: 0.2 })
+        cratebreak_sound = this.sound.add('cratebreak_sfx', { volume: 0.05 })
+        footsteps_sound = this.sound.add('footsteps_sfx', { volume: 0.1, loop: true })
+        footsteps_sound.play()
 
+        this.initAnimations()
         this.sound.pauseOnBlur = false
+        //if(!music.isPlaying)
+            //music.play()
 
-        music.play()
-        this.add.text(40, 660, 'Level ' + STAGE_LEVEL.toString(), { fontFamily: 'Georgia', fontSize: '24px' })
+        let levelText = this.add.text(10, 684, 'Level ' + STAGE_LEVEL.toString(), { fontFamily: 'Georgia', fontSize: '28px' })
+        levelText.setScrollFactor(0, 0)
     }
 
     update(time, delta)
@@ -240,8 +268,48 @@ export default class GameScene extends Phaser.Scene
         const runVelocity = 100
         const maxVel = 300
         const knockbackVelocity = 800
-        const jumpVelocity = 600
-        const isAirborne = player.body.velocity.y != 0 && !player.body.touching.down
+        const jumpVelocity = 560
+
+
+        //make crate immovable if touching and blocked on opposite sides...
+        cratesGroup.children.iterate(function(crate) {
+            //immovable check (between player and tilemap)
+            if(crate.body.touching.left && crate.body.blocked.right) {
+                console.log('aaaa')
+                crate.body.immovable = true
+                return
+            }
+            if(crate.body.touching.right && crate.body.blocked.left) {
+                console.log('bbbb')
+                crate.body.immovable = true
+                return
+            }
+
+            //if I push on one side and the other is not blocked, it should move...
+            if(crate.body.touching.right) {
+                if(!crate.body.blocked.left && !crate.body.touching.right) {
+                    crate.body.immovable = false
+                }
+            }
+            if(crate.body.touching.left) {
+                if(!crate.body.blocked.right && !crate.body.touching.left) {
+                    crate.body.immovable = false
+                }
+            }
+
+            if(crate.body.touching.none) {
+                crate.body.immovable = false
+            }
+
+        })
+
+        
+
+        //want to identify vibrating on top of a crate as NOT airborne
+
+        const isGrounded = (player.body.touching.down || player.body.blocked.down) && (player.body.velocity.y < 27 || player.body.velocity.y > -27)
+        const isAirborne = !isGrounded
+        //const isAirborne = player.body.velocity.y != 0 && !player.body.touching.down
 
 
         if(!isKnockback) {
@@ -263,44 +331,85 @@ export default class GameScene extends Phaser.Scene
             if(cursors.left?.isDown && !isKnockback) {
                 player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x - runVelocity, -maxVel, maxVel))
                 player.flipX = true;
+                player.body.setOffset(60, 20)
 
-                if(!isAirborne)
+                if(!isAirborne) {
                     player.anims.play('playerMove', true)
+                    footsteps_sound.resume()
+                }
             }
             //move right
             if(cursors.right?.isDown && !isKnockback) {
                 player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x + runVelocity, -maxVel, maxVel))
                 player.flipX = false;
+                player.body.setOffset(60, 20)
 
-                if(!isAirborne)
-                        player.anims.play('playerMove', true)
+                if(!isAirborne) {
+                    player.anims.play('playerMove', true)
+                    footsteps_sound.resume()
+                }
             }
+            if((!cursors.right?.isDown && !cursors.left?.isDown) || isKnockback || isAirborne)
+            footsteps_sound.pause()
+        }
+        else {
+            player.anims.play('playerRecoil', true)
         }
 
         //jump - ADD TIMER!!!
         //also fire now!
         if(Phaser.Input.Keyboard.JustDown(key_space)) {
             let modIndex = loopIndex % loopActions.length
-            if(loopActions[modIndex] == action.JUMP) {
-                isJumping = true
-                player.setVelocityY(-jumpVelocity)
-                jump_sound.play()
-            }
-            if(loopActions[modIndex] == action.FIRE) {
-                //spawn projectile in direction we are facing, apply set knockback to character
-                this.fireProjectile(player.x, player.y)
-                if(player.flipX)
-                    player.setVelocityX(knockbackVelocity)
-                else
-                    player.setVelocityX(-knockbackVelocity)
-                fire_sound.play()
-                knockbackTimer = this.time.delayedCall(250, this.unlockPlayerMovement) //disallow player input for x milliseconds
-                isKnockback = true
-            }
-            loopIndex++
+            
+            //check if cooldown is up for ability!
+            //if it is, do the ability, set false, and set cooldown callback
 
-            //set new positions for everything in the array!
-            this.rotateLoopUI()
+            if(loopActionReady[modIndex]) {
+                loopActionReady[modIndex] = false
+                loopImages[modIndex].tint = 0x555555
+
+                let actionable = false
+                loopActionReady.forEach(action => {
+                    actionable = actionable || action
+                })
+
+                if(!actionable)
+                    player.tint = 0x888888
+
+                this.time.addEvent({
+                    delay: 1000 * loopActions.length, //1 second per move on average
+                    callback: (index) => {
+                        loopActionReady[index] = true
+                        loopImages[index].clearTint()
+                        player.clearTint()
+                    },
+                    args: [modIndex]
+                })
+
+                if(loopActions[modIndex] == action.JUMP) {
+                    player.setVelocityY(-jumpVelocity)
+                    jump_sound.play()
+                }
+                if(loopActions[modIndex] == action.FIRE) {
+                    //spawn projectile in direction we are facing, apply set knockback to character
+                    this.fireProjectile(player.x, player.y)
+                    if(player.flipX)
+                        player.setVelocityX(knockbackVelocity)
+                    else
+                        player.setVelocityX(-knockbackVelocity)
+                    fire_sound.play()
+                    knockbackTimer = this.time.delayedCall(250, this.unlockPlayerMovement) //disallow player input for x milliseconds
+                    isKnockback = true
+                }
+                loopIndex++
+
+                //set new positions for everything in the array!
+                this.rotateLoopUI()
+            }
+            else {
+                console.log('TELL PLAYER SOMETHING ABOUT CD???')
+            }
+
         }
 
         //strong attack
@@ -325,20 +434,36 @@ export default class GameScene extends Phaser.Scene
                 player.anims.play('playerFall', true)
         }
 
+        projectiles.getChildren().forEach(elem => {
+            if(elem.body.x >= map.widthInPixels) {
+                elem.setActive(false)
+                elem.setVisible(false)
+                elem.setPosition(0, 0)
+                elem.body.velocity.x = 0
+            }
+        })
+
+        //kill player and restart level when below map
+        if(player.body.y - player.body.height >= map.heightInPixels) {
+            //PASS player spawn position HERE!!! for next level
+
+            this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL, playerX: 0, playerY: 0})
+        }
         //check win condition to move to next level!
         if(player.body.x + player.body.width >= map.widthInPixels) {
             this.registry.destroy()
+            music.stop()
             if(STAGE_LEVEL == LEVEL_COUNT) {
-                console.log('win')
                 //you win!
+                isKnockback = false
+                footsteps_sound.stop()  
                 this.scene.start('title-scene', { COMPLETED_GAME: true })
             }
             else {
-                console.log('next level')
                 //next level
+                isKnockback = false
                 this.scene.restart({ STAGE_LEVEL: STAGE_LEVEL + 1})
             }
-
         }
     }
 
@@ -371,6 +496,12 @@ export default class GameScene extends Phaser.Scene
         this.anims.create({
             key: 'playerIdle',
             frames: this.anims.generateFrameNumbers('mage_animation', { frames: [0,0,1,2,3] }),
+            frameRate: 7,
+            repeat: -1
+        })
+        this.anims.create({
+            key: 'playerRecoil',
+            frames: this.anims.generateFrameNumbers('mage_animation', { frames: [18,19] }),
             frameRate: 7,
             repeat: -1
         })
@@ -441,7 +572,7 @@ export default class GameScene extends Phaser.Scene
             let y = 100
             let iconSprite: Phaser.GameObjects.Sprite
 
-            //list of items handled by timers t/knocko indicate if they are actionable or not yet!
+            //list of items handled by timers to indicate if they are actionable or not yet!
             loopActionReady.push(true)
 
             if(elem == action.JUMP) {
@@ -450,11 +581,12 @@ export default class GameScene extends Phaser.Scene
             else { //elem == action.FIRE
                 iconSprite = this.add.sprite(x, y, 'fire_icon_animation')
                 iconSprite.setSize(80, 80)
-                //iconSprite.setof .setOffset(49, 20)
+                //iconSprite.setOffset(49, 20)
             }
             iconSprite.setScrollFactor(0, 0)
             loopImages.push(iconSprite)
-            this.add.text(x-10, y-90, (index+1).toString(), { fontFamily: 'Georgia', fontSize: '42px'})
+            let actionNumText = this.add.text(x-10, y-90, (index+1).toString(), { fontFamily: 'Georgia', fontSize: '42px'})
+            actionNumText.setScrollFactor(0, 0)
         })
     }
 
@@ -469,7 +601,7 @@ export default class GameScene extends Phaser.Scene
                 duration: 500,
                 ease: 'Sine.easeOut',
                 x: () => { return ringCenter.x + ringImageRadius * Math.cos(rotateAmount * (loopIndex-index)) },
-                y: () => { return ringCenter.y + ringImageRadius * Math.sin(rotateAmount * (loopIndex-index)) }
+                y: () => { return ringCenter.y + ringImageRadius * Math.sin(rotateAmount * (loopIndex-index)) - 10 }
             })
         })
     }

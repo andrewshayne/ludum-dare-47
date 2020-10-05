@@ -43,15 +43,15 @@ export default class TitleScene extends Phaser.Scene
         this.add.text(1280/2, 720 * 0.44, 'Mage Game', { fontFamily: 'Georgia', fontSize: '72px', align: 'center'}).setOrigin(0.5)
         this.add.text(1280/2, 720 * 0.55, 'Press space to play.', { fontFamily: 'Georgia', fontSize: '30px', align: 'center'}).setOrigin(0.5)
 
-        titleMusic = this.sound.add('menumusic', { volume: 0.4, loop: true })
-
+        titleMusic = this.sound.add('menumusic', { volume: 0.3, loop: true })
+        titleMusic.play()
     }
 
     update()
     {
         if(Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE))) {
             titleMusic.stop()
-            this.scene.start('game-scene', { STAGE_LEVEL: 1})
+            this.scene.start('game-scene', { STAGE_LEVEL: 1, playerX: 160, playerY: 540})
         }
     }
 }
