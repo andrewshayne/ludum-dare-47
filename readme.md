@@ -1,3 +1,16 @@
+Thank you for downloading our game! We couldn't get our Phaser 3 Typescript app hosted so hopefully this shall suffice.
+Clone the repository, run "npm install', then do "npm run start" to play our game.
+
+Controls: Left and Right arrow keys to move. Spacebar to ACT.
+
+
+You are a mage that has been cursed by a nasty spell. You are now *stuck in a loop* of actions - Jump and Shoot.
+Traverse the caverns with this disability and escape the loop!
+
+
+
+
+
 ![phaser3-parceljs-template](https://user-images.githubusercontent.com/2236153/71606463-37a0da80-2b2e-11ea-9b5f-5d26ccc84f91.png)
 
 # Phaser3 + TypeScript + Parcel Template
