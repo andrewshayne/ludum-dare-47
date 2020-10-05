@@ -283,6 +283,7 @@ export default class GameScene extends Phaser.Scene
         }
 
         //strong attack
+        /*
         if(Phaser.Input.Keyboard.JustDown(key_e)) {
             //spawn projectile in direction we are facing, apply set knockback to character
             this.fireProjectile(player.x, player.y)
@@ -294,6 +295,7 @@ export default class GameScene extends Phaser.Scene
             knockbackTimer = this.time.delayedCall(400, this.unlockPlayerMovement) //disallow player input for x milliseconds
             isKnockback = true
         }
+        */
 
         if(isAirborne) {
             if(player.body.velocity.y < 0)
@@ -376,14 +378,19 @@ export default class GameScene extends Phaser.Scene
         //could run out... but should always have one available!
         const fireVelocity = 600
         const p : Phaser.Physics.Arcade.Sprite = projectiles.getFirstDead()
+        p.setBodySize(50, 50)
         p.body.reset(x, y)
         p.setActive(true)
         p.setVisible(true)
         p.flipX = player.flipX
-        if(player.flipX)
+        if(player.flipX) {
             p.setVelocityX(-fireVelocity)
-        else
+            p.setOffset(10, 118)
+        }
+        else {
             p.setVelocityX(fireVelocity)
+            p.setOffset(100, 118)
+        }
         p.anims.play('shoot', true)
     }
 
