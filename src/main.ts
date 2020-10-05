@@ -18,7 +18,7 @@ const config: Phaser.Types.Core.GameConfig = {
 			gravity: { y: 1600 }
 		}
 	},
-	scene: [TitleScene, GameScene] //looks like it defaults to the first scene in the list
+	scene: [TitleScene, GameScene]
 }
 
 export default new Phaser.Game(config)
