@@ -315,6 +315,7 @@ export default class GameScene extends Phaser.Scene
             let c1 = <Phaser.Physics.Arcade.Sprite>crate1
             let c2 = <Phaser.Physics.Arcade.Sprite>crate2
 
+            /*
             if(c1.body.x < c2.body.x) {
                 c1.body.velocity.x -= 1
                 c2.body.velocity.x += 1
@@ -323,8 +324,12 @@ export default class GameScene extends Phaser.Scene
                 c1.body.velocity.x += 1
                 c2.body.velocity.x -= 1
             }
+            
             c1.body.immovable = true
             c2.body.immovable = true
+            c1.tint = 0x00FF00
+            c2.tint = 0x00FF00
+            */
         })
         
 
@@ -362,16 +367,19 @@ export default class GameScene extends Phaser.Scene
 
 
         //make crate immovable if touching and blocked on opposite sides...
+        /*
         cratesGroup.children.iterate(function(crate) {
             let c1 = <Phaser.Physics.Arcade.Sprite>crate
 
             //immovable check (between player and tilemap)
             if(c1.body.touching.left && c1.body.blocked.right) {
                 c1.body.immovable = true
+                c1.tint = 0x00FF00
                 return
             }
             if(c1.body.touching.right && c1.body.blocked.left) {
                 c1.body.immovable = true
+                c1.tint = 0x00FF00
                 return
             }
 
@@ -379,19 +387,23 @@ export default class GameScene extends Phaser.Scene
             if(c1.body.touching.right) {
                 if(!c1.body.blocked.left && !c1.body.touching.right) {
                     c1.body.immovable = false
+                    c1.clearTint()
                 }
             }
             if(c1.body.touching.left) {
                 if(!c1.body.blocked.right && !c1.body.touching.left) {
                     c1.body.immovable = false
+                    c1.clearTint()
                 }
             }
 
             if(c1.body.touching.none) {
                 c1.body.immovable = false
+                c1.clearTint()
             }
 
         })
+        */
 
         
 
