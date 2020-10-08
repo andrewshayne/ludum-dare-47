@@ -12,6 +12,13 @@ let playerX: integer
 let playerY: integer
 
 let bg: GameObjects.Image
+let cave_1: GameObjects.Image
+let cave_2: GameObjects.Image
+let cave_3: GameObjects.Image
+let cave_4: GameObjects.Image
+let cave_5: GameObjects.Image
+
+
 
 //player
 let player: Phaser.Physics.Arcade.Sprite
@@ -80,7 +87,14 @@ export default class GameScene extends Phaser.Scene
         this.load.tilemapTiledJSON('map2', 'magetiles2.json')
         //this.load.tilemapTiledJSON('map3', 'magetiles3.json')
 
-        this.load.image('bg', 'cave_bg_fit.png')
+        //this.load.image('bg', 'cave_bg_fit.png')
+        this.load.image('bg', 'bg.png')
+        this.load.image('cave_1', 'cave_1.png')
+        this.load.image('cave_2', 'cave_2.png')
+        this.load.image('cave_3', 'cave_3.png')
+        this.load.image('cave_4', 'cave_4.png')
+        this.load.image('cave_5', 'cave_5.png')
+
         //this.load.image('magetiles', 'magetiles.png')
         this.load.image('magetiles-extruded', 'magetiles-extruded.png')
         this.load.spritesheet('mage_animation', 'mageanimations.png', { frameWidth: 173, frameHeight: 186 })
@@ -104,14 +118,36 @@ export default class GameScene extends Phaser.Scene
 
     create()
     {
+        let xOrigin = 0
+        let yOrigin = 0
         //set large bg
-        //bg = this.add.image(890, 610, 'bg')
+        bg = this.add.image(890, 610, 'bg')
+        bg.setScrollFactor(0)
+        //bg.setOrigin(890, 610)
 
         //set 1280x720 bg
-        bg = this.add.image(640, 360, 'bg')
+        //bg = this.add.image(640, 360, 'bg')
 
-        //make bg static
-        bg.setScrollFactor(0, 0)
+
+        //set layers at top left?
+        cave_5 = this.add.image(0, 0, 'cave_5')
+        cave_4 = this.add.image(0, 0, 'cave_4')
+        cave_3 = this.add.image(0, 0, 'cave_3')
+        cave_2 = this.add.image(0, 0, 'cave_2')
+        cave_1 = this.add.image(0, 0, 'cave_1')
+
+        cave_1.setOrigin(xOrigin, yOrigin)
+        cave_2.setOrigin(xOrigin, yOrigin)
+        cave_3.setOrigin(xOrigin, yOrigin)
+        cave_4.setOrigin(xOrigin, yOrigin)
+        cave_5.setOrigin(xOrigin, yOrigin)
+
+        cave_1.setScrollFactor(0.8)
+        cave_2.setScrollFactor(0.4)
+        cave_3.setScrollFactor(0.2)
+        cave_4.setScrollFactor(0.1)
+        cave_5.setScrollFactor(0.05)
+
 
         map = this.make.tilemap({ key: 'map' + STAGE_LEVEL })
 
@@ -264,6 +300,7 @@ export default class GameScene extends Phaser.Scene
 
     update(time, delta)
     {
+
         const cursors = this.input.keyboard.createCursorKeys()
         const runVelocity = 100
         const maxVel = 300
