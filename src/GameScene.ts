@@ -88,12 +88,12 @@ export default class GameScene extends Phaser.Scene
         //this.load.tilemapTiledJSON('map3', 'magetiles3.json')
 
         //this.load.image('bg', 'cave_bg_fit.png')
-        this.load.image('bg', 'bg.png')
-        this.load.image('cave_1', 'cave_1.png')
-        this.load.image('cave_2', 'cave_2.png')
-        this.load.image('cave_3', 'cave_3.png')
-        this.load.image('cave_4', 'cave_4.png')
-        this.load.image('cave_5', 'cave_5.png')
+        this.load.image('bg', 'bg/bg.png')
+        this.load.image('cave_1', 'bg/cave_1.png')
+        this.load.image('cave_2', 'bg/cave_2.png')
+        this.load.image('cave_3', 'bg/cave_3.png')
+        this.load.image('cave_4', 'bg/cave_4.png')
+        this.load.image('cave_5', 'bg/cave_5.png')
 
         //this.load.image('magetiles', 'magetiles.png')
         this.load.image('magetiles-extruded', 'magetiles-extruded.png')
@@ -142,7 +142,14 @@ export default class GameScene extends Phaser.Scene
         cave_4.setOrigin(xOrigin, yOrigin)
         cave_5.setOrigin(xOrigin, yOrigin)
 
-        cave_1.setScrollFactor(0.8)
+        //joel settings
+        //cave_1.setScrollFactor(0.8)
+        //cave_2.setScrollFactor(0.4)
+        //cave_3.setScrollFactor(0.2)
+        //cave_4.setScrollFactor(0.1)
+        //cave_5.setScrollFactor(0.05)
+
+        cave_1.setScrollFactor(0.6)
         cave_2.setScrollFactor(0.4)
         cave_3.setScrollFactor(0.2)
         cave_4.setScrollFactor(0.1)
