@@ -10,6 +10,12 @@ const LEVEL_COUNT = 2
 let STAGE_LEVEL: integer
 let playerX: integer
 let playerY: integer
+let playerWidth = 80
+let playerHeight = 160 - 40
+
+let playerOffsetRight = 60
+let playerOffsetLeft = 60
+let playerOffsetY = 20 + 40
 
 let bg: GameObjects.Image
 let cave_1: GameObjects.Image
@@ -49,7 +55,7 @@ let crates: Phaser.GameObjects.Sprite[]
 
 
 //player projectiles
-let projectiles
+let projectiles: Phaser.GameObjects.Group
 
 //crate group
 let cratesGroup: Phaser.GameObjects.Group
@@ -173,8 +179,9 @@ export default class GameScene extends Phaser.Scene
 
         ///player
         player = this.physics.add.sprite(playerX, playerY, 'mage_animation')
-        player.body.setSize(50, 160)
-        player.body.setOffset(60, 20)
+        player.body.setSize(50, playerHeight)
+        player.body.setOffset(playerOffsetRight, playerOffsetY)
+        player.setOrigin(0.5)
         player.setMaxVelocity(800, 600)
 
         //set camera and follow player
@@ -213,63 +220,101 @@ export default class GameScene extends Phaser.Scene
 
         //fireball x layer1
         this.physics.add.collider(projectiles, layer1, function(projectile, tile) {
-            projectile.anims.play('poof', true)
-            projectile.setVelocityX(0)
-            projectile.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
-                projectile.setActive(false)
-                projectile.setVisible(false)
-                projectile.setPosition(0, 0)
-                projectile.body.velocity.x = 0
+            let p1 = <Phaser.Physics.Arcade.Sprite> projectile
+            p1.anims.play('poof', true)
+            p1.setVelocityX(0)
+            p1.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
+                p1.setActive(false)
+                p1.setVisible(false)
+                p1.setPosition(0, 0)
+                p1.body.velocity.x = 0
             })
         })
 
         //fireball x crate
         this.physics.add.collider(crates, projectiles, function(crate, projectile) { }, function(crate, projectile) {
-            projectile.anims.play('poof', true)
-            projectile.setVelocityX(0)
-            projectile.setInteractive(false)
-            projectile.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
-                projectile.setActive(false)
-                projectile.setVisible(false)
-                projectile.setPosition(0, 0)
+            let c1 = <Phaser.Physics.Arcade.Sprite> crate
+            let p1 = <Phaser.Physics.Arcade.Sprite> projectile
+            p1.anims.play('poof', true)
+            p1.setVelocityX(0)
+            p1.setInteractive(false)
+            p1.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
+                p1.setActive(false)
+                p1.setVisible(false)
+                p1.setPosition(0, 0)
             })
 
-            crate.anims.play('cratePoof', true)
+            c1.anims.play('cratePoof', true)
             if(!cratebreak_sound.isPlaying)
                 cratebreak_sound.play()
-            crate.setInteractive(false)
-            crate.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
-                crate.destroy()
+            c1.setInteractive(false)
+            c1.once(Phaser.Animations.Events.SPRITE_ANIMATION_COMPLETE, () => {
+                c1.destroy()
             })
         })
 
-
         //player x crate
-        this.physics.add.collider(player, cratesGroup, function(p, c) {
+        this.physics.add.collider(player, cratesGroup, function(player, crate) {
+            let p1 = <Phaser.Physics.Arcade.Sprite> player
+            let c1 = <Phaser.Physics.Arcade.Sprite> crate
             //player on top of crate
             //if(c.body.touching.up == true) {
                 //p.body.velocity.y = 0
                 //p.body.y = c.body.position.y - p.height
                 //c.body.velocity.y = 0
             //}
-            if(c.body.touching.left == true || c.body.touching.right == true) {
-                p.body.velocity.x = p.body.velocity.x * 0.1
-                c.body.velocity.x = p.body.velocity.x
+
+
+            if(c1.body.touching.left || c1.body.touching.right) {
+                p1.body.velocity.x = p1.body.velocity.x * 0.5 //c1.body.velocity.x
+                //c1.body.velocity.x = -p1.body.velocity.x/p1.body.velocity.x
+            }
+        })
+
+        this.physics.add.overlap(player, cratesGroup, function(player, crate) {
+            let p1 = <Phaser.Physics.Arcade.Sprite> player
+            let c1 = <Phaser.Physics.Arcade.Sprite> crate
+
+
+            if(c1.body.touching.up)
+                p1.setGravityY(0)
+
+            let vertThreshold = 4
+            if((p1.body.touching.up || p1.body.touching.down) && p1.body.bottom - vertThreshold < c1.body.top) {
+                return
+            }
+
+            if(p1.body.touching.left || p1.body.touching.right) {
+                if(p1.body.center.x < c1.body.center.x) {
+                    p1.body.position.x = c1.body.center.x - c1.body.halfWidth - p1.body.width
+                }
+                else {
+                    p1.body.position.x = c1.body.center.x + c1.body.halfWidth// + p1.body.width
+                }
             }
         })
 
 
         //crate x layer1
-        this.physics.add.collider(crates, layer1, function(c, t) {
+        this.physics.add.collider(crates, layer1, function(crate, tile) {
+            //console.log('OOF')
+            let c1 = <Phaser.Physics.Arcade.Sprite>crate
+
+            if(c1.body.blocked.down) {
+                c1.body.velocity.x = c1.body.velocity.x * 0.8
+            }
             //c.body.velocity.x = 0
             //if(c.body.touching.down) {
             //    c.body.position.y = t.body.position.y - c.height
             //}
-            c.body.velocity.x = 0
+            //c1.body.velocity.x = 0
         })
 
         //crate x crate
-        this.physics.add.collider(crates, crates, ()=>{}, function(c1, c2) {
+        this.physics.add.collider(crates, crates, ()=>{}, function(crate1, crate2) {
+            let c1 = <Phaser.Physics.Arcade.Sprite>crate1
+            let c2 = <Phaser.Physics.Arcade.Sprite>crate2
+
             if(c1.body.x < c2.body.x) {
                 c1.body.velocity.x -= 1
                 c2.body.velocity.x += 1
@@ -298,8 +343,9 @@ export default class GameScene extends Phaser.Scene
 
         this.initAnimations()
         this.sound.pauseOnBlur = false
-        if(!music.isPlaying)
+        if(!music.isPlaying) {
             music.play()
+        }
 
         let levelText = this.add.text(10, 684, 'Level ' + STAGE_LEVEL.toString(), { fontFamily: 'Georgia', fontSize: '28px' })
         levelText.setScrollFactor(0, 0)
@@ -312,37 +358,37 @@ export default class GameScene extends Phaser.Scene
         const runVelocity = 100
         const maxVel = 300
         const knockbackVelocity = 800
-        const jumpVelocity = 560
+        const jumpVelocity = 620
 
 
         //make crate immovable if touching and blocked on opposite sides...
         cratesGroup.children.iterate(function(crate) {
+            let c1 = <Phaser.Physics.Arcade.Sprite>crate
+
             //immovable check (between player and tilemap)
-            if(crate.body.touching.left && crate.body.blocked.right) {
-                console.log('aaaa')
-                crate.body.immovable = true
+            if(c1.body.touching.left && c1.body.blocked.right) {
+                c1.body.immovable = true
                 return
             }
-            if(crate.body.touching.right && crate.body.blocked.left) {
-                console.log('bbbb')
-                crate.body.immovable = true
+            if(c1.body.touching.right && c1.body.blocked.left) {
+                c1.body.immovable = true
                 return
             }
 
             //if I push on one side and the other is not blocked, it should move...
-            if(crate.body.touching.right) {
-                if(!crate.body.blocked.left && !crate.body.touching.right) {
-                    crate.body.immovable = false
+            if(c1.body.touching.right) {
+                if(!c1.body.blocked.left && !c1.body.touching.right) {
+                    c1.body.immovable = false
                 }
             }
-            if(crate.body.touching.left) {
-                if(!crate.body.blocked.right && !crate.body.touching.left) {
-                    crate.body.immovable = false
+            if(c1.body.touching.left) {
+                if(!c1.body.blocked.right && !c1.body.touching.left) {
+                    c1.body.immovable = false
                 }
             }
 
-            if(crate.body.touching.none) {
-                crate.body.immovable = false
+            if(c1.body.touching.none) {
+                c1.body.immovable = false
             }
 
         })
@@ -375,7 +421,11 @@ export default class GameScene extends Phaser.Scene
             if(cursors.left?.isDown && !isKnockback) {
                 player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x - runVelocity, -maxVel, maxVel))
                 player.flipX = true;
-                player.body.setOffset(60, 20)
+                player.body.setOffset(playerOffsetLeft, playerOffsetY)
+
+                //halt player movement if they run into a crate
+                //if(player.body.touching.left)
+                //    player.setVelocityX(0)
 
                 if(!isAirborne) {
                     player.anims.play('playerMove', true)
@@ -386,7 +436,11 @@ export default class GameScene extends Phaser.Scene
             if(cursors.right?.isDown && !isKnockback) {
                 player.setVelocityX(Phaser.Math.Clamp(player.body.velocity.x + runVelocity, -maxVel, maxVel))
                 player.flipX = false;
-                player.body.setOffset(60, 20)
+                player.body.setOffset(playerOffsetRight, playerOffsetY)
+
+                //halt player movement if they run into a crate
+                //if(player.body.touching.right)
+                //    player.setVelocityX(0)
 
                 if(!isAirborne) {
                     player.anims.play('playerMove', true)
@@ -398,6 +452,8 @@ export default class GameScene extends Phaser.Scene
         }
         else {
             player.anims.play('playerRecoil', true)
+            if(player.body.touching.left || player.body.touching.right)
+                player.setVelocityX(0)
         }
 
         //jump - ADD TIMER!!!
@@ -421,7 +477,7 @@ export default class GameScene extends Phaser.Scene
                     player.tint = 0x888888
 
                 this.time.addEvent({
-                    delay: 1000 * loopActions.length, //1 second per move on average
+                    delay: 800 * loopActions.length, //1 second per move on average
                     callback: (index) => {
                         loopActionReady[index] = true
                         loopImages[index].clearTint()
@@ -478,12 +534,13 @@ export default class GameScene extends Phaser.Scene
                 player.anims.play('playerFall', true)
         }
 
-        projectiles.getChildren().forEach(elem => {
-            if(elem.body.x >= map.widthInPixels) {
-                elem.setActive(false)
-                elem.setVisible(false)
-                elem.setPosition(0, 0)
-                elem.body.velocity.x = 0
+        projectiles.getChildren().forEach(projectile => {
+            let p1 = <Phaser.Physics.Arcade.Sprite>projectile
+            if(p1.body.x >= map.widthInPixels) {
+                p1.setActive(false)
+                p1.setVisible(false)
+                p1.setPosition(0, 0)
+                p1.body.velocity.x = 0
             }
         })
 
