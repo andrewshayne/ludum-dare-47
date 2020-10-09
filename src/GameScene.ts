@@ -258,7 +258,7 @@ export default class GameScene extends Phaser.Scene
             let c1 = <Phaser.Physics.Arcade.Sprite>crate
 
             if(c1.body.blocked.down) {
-                c1.body.velocity.x = c1.body.velocity.x * 0.8
+                c1.body.velocity.x = c1.body.velocity.x * 0.5
             }
             //c.body.velocity.x = 0
             //if(c.body.touching.down) {
