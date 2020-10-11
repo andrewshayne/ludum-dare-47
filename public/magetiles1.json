@@ -72,6 +72,17 @@
                  "width":160,
                  "x":1120,
                  "y":640
+                }, 
+                {
+                 "height":160,
+                 "id":12,
+                 "name":"crate",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":160,
+                 "x":800,
+                 "y":480
                 }],
          "offsetx":80,
          "offsety":0,
@@ -81,8 +92,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":11,
- "nextobjectid":12,
+ "nextlayerid":12,
+ "nextobjectid":13,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.4.2",
